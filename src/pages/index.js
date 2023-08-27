@@ -1,118 +1,162 @@
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
+import Link from "next/link";
+import path from "path";
+import fs from "fs";
+import { useState } from "react";
+import Image from "next/image";
+import axios from "axios";
+import { useSession } from "next-auth/react";
 
-const inter = Inter({ subsets: ['latin'] })
+import elonmusk from "/public/elonmusk.jpg";
 
-export default function Home() {
+export default function Home({ blogPosts }) {
+  const { data: session } = useSession();
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
+
+  const handleTitleChange = (event) => {
+    setTitle(event.target.value);
+  };
+
+  const handleContentChange = (event) => {
+    setContent(event.target.value);
+  };
+
+  const handleFileChange = (event) => {
+    setSelectedFile(event.target.files[0]);
+  };
+
+  const handlePublish = async () => {
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("content", content);
+    formData.append("image", selectedFile);
+
+    try {
+      const response = await axios.post("/api/publishBlog", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (response.status === 200) {
+        console.log("Blog published successfully");
+        // Refresh the page to display the new blog
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error("Error publishing blog:", error);
+    }
+  };
+
   return (
-    <main
-      className={`flex min-h-screen flex-col items-center justify-between p-24 ${inter.className}`}
-    >
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/pages/index.js</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <div>
+      <header>
+        <h1 className=" py-8 ml-10 text-2xl font-extrabold text-gray-900 dark:text-black sm:text-xl sm:tracking-tight lg:text-2xl ">
+          All Blogs
+        </h1>
+      </header>
+
+      <main className="bg-slate-50 dark:g-slate-50">
+        <div className="max-w-screen-xl mx-auto py-6 px-4 sm:py-12 sm:px-3 lg:px-4">
+          <div className="mt-6 space-y-4">
+            {session && (
+              <div className="bg-white p-6 shadow-md rounded-lg">
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
+                  Publish a Blog
+                </h2>
+                <label>
+                  Title:
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={handleTitleChange}
+                    className="mt-1 p-2 border rounded-md w-full"
+                  />
+                </label>
+                <label className="block mt-4">
+                  Content:
+                  <textarea
+                    value={content}
+                    onChange={handleContentChange}
+                    className="mt-1 p-2 border rounded-md w-full"
+                  />
+                </label>
+                <label className="block mt-4">
+                  Image:
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                  />
+                </label>
+                <button
+                  onClick={handlePublish}
+                  className="mt-4 p-2 bg-blue-500 text-white rounded-md"
+                >
+                  Publish
+                </button>
+              </div>
+            )}
+
+            {blogPosts.map((post) => (
+              <div
+                key={post.id}
+                className="bg-white p-6 shadow-md rounded-lg flex"
+              >
+                <div className="flex-shrink-0 mr-4">
+                  <Image
+                    width={50} // Adjust the width as needed
+                    height={50} // Adjust the height as needed
+                    src={elonmusk} // Use the correct image path from your data
+                    alt="Blog Image"
+                    className="h-20 w-20 object-cover rounded-md"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-semibold text-gray-800 dark:text-black">
+                      {post.title}
+                    </h2>
+                    <span className="text-sm font-normal text-gray-500">
+                      {post.date}
+                    </span>
+                  </div>
+                  <p className="text-gray-600 dark:text-black mt-2">
+                    {post.content}...
+                  </p>
+                  <div className="mt-4">
+                    <Link
+                      className="text-blue-500 hover:underline"
+                      href={`/blogs/${post.slug}`}
+                    >
+                      Read More
+                    </Link>
+                    <button className="ml-2 text-gray-500 hover:text-gray-700">
+                      Edit
+                    </button>
+                    <button className="ml-2 text-red-500 hover:text-red-700">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      </main>
+    </div>
+  );
+}
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
+export async function getStaticProps() {
+  const filePath = path.join(process.cwd(), "src", "data", "blogPosts.json");
+  const jsonData = fs.readFileSync(filePath, "utf-8");
+  const blogPosts = JSON.parse(jsonData);
 
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  )
+  return {
+    props: {
+      blogPosts,
+    },
+  };
 }
